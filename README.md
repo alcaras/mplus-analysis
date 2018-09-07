@@ -3,7 +3,11 @@ analysis of mythic+ dungeon and class balance using the raider.io api
 
 the goal of this is to look at comparative dungeon + class balance so far
 
-sample output (as of 2018 sept 6):
+## how to run
+
+run get_data.py first, then analysis.py
+
+## sample output
 
 ```
 Dungeon Scores: Fortified, Sanguine, Necrotic, Infested
