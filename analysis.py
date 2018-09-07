@@ -30,7 +30,8 @@ tanks =  [u'Vengeance Demon Hunter',
           u'Brewmaster Monk',
           u'Blood Death Knight',
           u'Guardian Druid',
-          u'Protection Paladin']
+          u'Protection Paladin',
+          u'Protection Warrior']
 
 healers = [u'Restoration Druid',
            u'Holy Paladin',
