@@ -2,6 +2,7 @@ import pprint
 import sys
 from scipy.stats import t
 from numpy import average, std
+from math import sqrt
 
 dungeons = {}
 runs = []
@@ -16,6 +17,11 @@ with open('dungeons.json', 'r') as infile:
 with open('runs.json', 'r') as infile:
     runs = json.load(infile)
 
+dungeons_pretty = []
+for k, v in dungeons.iteritems():
+    if k not in dungeons_pretty:
+        dungeons_pretty += [k]
+    
 ## import complete
                
 def dungeon_averages():
@@ -71,25 +77,7 @@ import pprint
 
 spec_score = {}
 
-
-def spec_count(dungeon=""):
-    global runs, specs, spec_score, tanks, healers, melee, ranged
-    for s in specs:
-        spec_score[s] = 0
-        for r in runs:
-            if s in r:
-                if dungeon:
-                    if dungeon not in r[0]:
-                        continue
-                spec_score[s] += r.count(s)
-
-    for display in [tanks, healers, melee, ranged]:
-        for k, v in sorted(spec_score.items(), key=lambda x: x[1], reverse=True):
-            if k in display:
-                print str(v) + "  " + k
-        print
-
-def spec_scores(dungeon=""):
+def spec_scores(dungeon="", spec=""):
     global runs, specs, tanks, healers, melee, ranged
     spec_scores = {}
     spec_ci = {}
@@ -97,16 +85,25 @@ def spec_scores(dungeon=""):
     for s in specs:
         spec_scores[s] = []
         for r in runs:
-            if s in r:
+            cr = copy.copy(r)
+            if spec:
+                if spec not in cr:
+                    continue
+                else:
+                    cr.remove(spec) # to prevent pairing with self, remove first instance
+            if s in cr:
                 if dungeon:
-                    if dungeon not in r[0]:
+                    if dungeon not in cr[0]:
                         continue
-                spec_scores[s] += [r[1]]
+                spec_scores[s] += [cr[1]]
+
 
         data = spec_scores[s]
-        mean = average(data)
         n = len(data)
-        stddev = std(data, ddof=0)
+        if n <= 2:
+            continue
+        mean = average(data)
+        stddev = std(data, ddof=1)
         t_bounds = t.interval(0.95, len(data) - 1)
         ci = [mean + critval * stddev / sqrt(len(data)) for critval in t_bounds]
         spec_ci[s] = ci
@@ -121,62 +118,22 @@ def spec_scores(dungeon=""):
                 print str("%d" % k[3]).rjust(4)
         print
 
+def dungeon_analysis():
+    global runs, specs, dungeons_pretty
 
-from math import sqrt
-
-def _confidence(n, wins):
-    if n == 0:
-        return 0
-
-    z = 1.6 
-    phat = float(wins) / n
-    return sqrt(phat+z*z/(2*n)-z*((phat*(1-phat)+z*z/(4*n))/n))/(1+z*z/n)
-
-def wilson(n, wins):
-    if n == 0:
-        return 0
-    else:
-        return _confidence(n, wins)
-
-def sorted_effectiveness(sc):
-    pairs = []
-    for k, v in sc.iteritems():
-        pairs += [[k, wilson(v[1], v[0])]]
-    for k, v in sorted(pairs, key=lambda x: x[1], reverse=True):
-        print "%.2f  " % v + k
-
-        
-def spec_analysis():
-    global runs, specs, spec_score
-    spec_correlation = {}
-    for s in specs:
-        spec_correlation[s] = {}
-        for r in runs:
-            if s not in r:
-                continue
-            current_run = copy.copy(r[2:])
-            current_run.remove(s)
-            for ss in current_run:
-                if ss not in spec_correlation[s]:
-                    spec_correlation[s][ss] = [0, 0]
-                spec_correlation[s][ss][1] += 1
-                spec_correlation[s][ss][0] += r[1]
-        print s, "is best paired with..."
-        sorted_effectiveness(spec_correlation[s])
+    for s in dungeons_pretty:
+        print s, "Spec Scores:", affixes["us"]
+        spec_scores(dungeon=s)
         print
 
-def dungeon_analysis():
-    global runs, specs, spec_score
-    
-    dungeons_pretty = []
-    for k, v in dungeons.iteritems():
-        if k not in dungeons_pretty:
-            dungeons_pretty += [k]
+def pairing_analysis():
+    global runs, specs, dungeons_pretty, tanks, healers, melee, ranged
 
-    dung_correlation = {}
-    for s in dungeons_pretty:
-        print s, "is most often run by..."
-        spec_count(dungeon=s)
+    for display in [tanks, healers, melee, ranged]:
+        for s in display:
+            print s, "Pairing Scores:", affixes["us"]
+            spec_scores(spec=s)
+            print
         print
 
 print
@@ -187,23 +144,20 @@ dungeon_averages()
 print
 print
 
-#print "Spec Counts"
-#spec_count()
-#print
-
 print "Spec Scores:", affixes["us"]
 print
 
 print "     lcb   spec                       mean    n"
 spec_scores()
 print
-sys.exit()
 
-print "Spec Pairings"
-print
-spec_analysis()
 
-print "Specs for each Dungeon"
+print "Per Dungeon Spec Scores:", affixes["us"]
 print
 dungeon_analysis()
+print
 
+print "Per Spec Pairing Scores:", affixes["us"]
+print
+pairing_analysis()
+print
